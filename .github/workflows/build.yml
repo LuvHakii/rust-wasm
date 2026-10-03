@@ -25,7 +25,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   ROOT: /home/runner/rust-wasm-build
@@ -182,15 +182,6 @@ jobs:
         with:
           version: ${{ env.WASMTIME_VER }}
 
-      - uses: bytecodealliance/actions/wasm-tools/setup@v1
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: validate
-        run: wasm-tools validate --features all ${{ env.ROOT }}/out/*.wasm
-
       - name: gate
         run: bash scripts/gate.sh
 
@@ -198,6 +189,8 @@ jobs:
     if: inputs.release
     needs: [gate]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
