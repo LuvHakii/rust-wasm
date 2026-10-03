@@ -72,3 +72,15 @@ rule:
 fix: |-
   target.contains("ohos")
           || target.contains("wasi")
+---
+id: llvm-build-wasi-components
+language: rust
+files: [compiler/rustc_llvm/build.rs]
+metadata: { expect: 1 }
+rule:
+  pattern: components.retain(|c| OPTIONAL_COMPONENTS.contains(c) || REQUIRED_COMPONENTS.contains(c));
+fix: |-
+  components.retain(|c| OPTIONAL_COMPONENTS.contains(c) || REQUIRED_COMPONENTS.contains(c));
+  if target.contains("wasi") {
+      components.retain(|c| !OPTIONAL_COMPONENTS.contains(c) || *c == "webassembly");
+  }
