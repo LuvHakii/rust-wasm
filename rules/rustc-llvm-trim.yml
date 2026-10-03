@@ -1,0 +1,46 @@
+# rustc.wasm only compiles Rust for wasm32. These LLVM pieces cannot be reached from that, or only through flags
+# the playground has no use for, so they are cut at the few places that pull them in.
+id: llvm-no-pass-by-name
+language: cpp
+files: [src/llvm-project/llvm/lib/Passes/PassBuilder.cpp]
+metadata: { expect: 6 }
+rule:
+  kind: compound_statement
+  inside:
+    field: body
+    kind: function_definition
+    has: { field: declarator, regex: 'PassBuilder::(parsePassPipeline|parseAAPipeline)\(' }
+fix: |-
+  {
+    return make_error<StringError>("pass pipelines by name are not built in", inconvertibleErrorCode());
+  }
+---
+# OpenMP, coroutines, Attributor, PGO and sample profiles, MemProf: rustc never emits their IR, and profiling needs a
+# profiler runtime that wasm32-wasip1 does not ship.
+id: llvm-pipeline-no-unused-passes
+language: cpp
+files: [src/llvm-project/llvm/lib/Passes/PassBuilderPipelines.cpp]
+metadata: { expect: 55 }
+rule:
+  kind: expression_statement
+  regex: '(?s)^\w+(\.|->)addPass\(.*\b(OpenMPOptPass|OpenMPOptCGSCCPass|CoroEarlyPass|CoroSplitPass|CoroCleanupPass|CoroElidePass|CoroAnnotationElidePass|buildCoroWrapper|AttributorPass|AttributorCGSCCPass|SampleProfileLoaderPass|SampleProfileProbePass|PGOIndirectCallPromotion|MemProfUsePass|MemProfRemoveInfo|PGOForceFunctionAttrsPass|PGOCtxProfFlatteningPass|PGOCtxProfLoweringPass|PGOInstrumentationGen|PGOInstrumentationGenCreateVar|MemProfContextDisambiguation|PGOMemOPSizeOpt|InstrProfilingLoweringPass)\b'
+fix: '{}'
+---
+id: llvm-pipeline-no-pgo-instr
+language: cpp
+files: [src/llvm-project/llvm/lib/Passes/PassBuilderPipelines.cpp]
+metadata: { expect: 7 }
+rule:
+  kind: expression_statement
+  regex: '^(addPGOInstrPasses|addPGOInstrPassesForO0)\('
+fix: '{}'
+---
+# wasm32 supports no sanitizers, and coverage instrumentation needs the profiler runtime
+id: rustc-no-sanitizers
+language: cpp
+files: [compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp]
+metadata: { expect: 3 }
+rule:
+  kind: if_statement
+  regex: '^if \((!IsLinkerPluginLTO && SanitizerOptions|InstrumentCoverage\)|SanitizerOptions\))'
+fix: ''
