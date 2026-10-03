@@ -28,6 +28,19 @@ fix: |-
           .define("LLVM_BUILD_UTILS", "OFF")
           .define("LLVM_INCLUDE_RUNTIMES", "OFF")
           .define("LLVM_TARGETS_TO_BUILD", "WebAssembly")
+          .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", "")
           .define("LLD_BUILD_TOOLS", "OFF")
           .define("HAVE_DLOPEN", "");
+  }
+---
+id: bootstrap-llvm-link-static-for-wasi
+language: rust
+files: [src/bootstrap/src/core/build_steps/compile.rs]
+metadata: { expect: 1 }
+rule:
+  pattern: 'if builder.llvm_link_shared() { $$$B }'
+  inside: { kind: function_item, stopBy: end, has: { field: name, regex: ^rustc_llvm_env$ } }
+fix: |-
+  if builder.llvm_link_shared() && !target.contains("wasi") {
+      $$$B
   }

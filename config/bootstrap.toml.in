@@ -2,14 +2,9 @@ profile = "compiler"
 change-id = "ignore"
 
 [llvm]
-download-ci-llvm = false
+download-ci-llvm = true
 ninja = true
 assertions = false
-plugins = false
-libzstd = false
-release-debuginfo = false
-targets = "X86;WebAssembly"
-experimental-targets = ""
 
 [rust]
 channel = "stable"
