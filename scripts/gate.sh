@@ -18,6 +18,15 @@ if [ -f $OUT/rustc.wasm ]; then
   out=$($WT run $G/tmp/out.wasm)
   [ "$out" = "Hello World!" ] || { echo "rustc gate: unexpected output '$out'"; exit 1; }
   echo "rustc gate: ok"
+
+  mkdir -p $G/cwd/proj
+  printf 'fn main() { println!("{:?} {}", std::env::current_dir().unwrap(), std::fs::read_to_string("in.txt").unwrap().trim()); }\n' > $G/cwd/proj/main.rs
+  echo hi > $G/cwd/proj/in.txt
+  $WT run $WTFLAGS --env PWD=/proj --dir $G/cwd::/ --dir $G/sysroot::/sysroot \
+    $OUT/rustc.wasm main.rs --sysroot /sysroot --target $TARGET -Copt-level=0 -Cpanic=abort -o main.wasm
+  out=$($WT run --env PWD=/proj --dir $G/cwd::/ $G/cwd/proj/main.wasm)
+  [ "$out" = '"/proj" hi' ] || { echo "cwd gate: unexpected output '$out'"; exit 1; }
+  echo "cwd gate: ok"
 fi
 
 tar xf $OUT/rust-src.tar -C $G/ra/sysroot

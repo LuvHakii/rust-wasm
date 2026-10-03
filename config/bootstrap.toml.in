@@ -36,6 +36,7 @@ linker = "@WASI_SDK@/bin/wasm32-wasip1-threads-clang"
 wasi-root = "@WASI_SDK@/share/wasi-sysroot"
 rustflags = [
   "-Clink-self-contained=no",
+  "-Clink-arg=@CWD_OBJ@",
   "-Clink-arg=-lc++abi",
   "-Clink-arg=-lwasi-emulated-mman",
   "-Clink-arg=-lwasi-emulated-signal",

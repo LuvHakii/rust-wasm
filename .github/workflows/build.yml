@@ -111,6 +111,8 @@ jobs:
       CCACHE_DIR: /home/runner/rust-wasm-build/ccache
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Free disk
         run: |

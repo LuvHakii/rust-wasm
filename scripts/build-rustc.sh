@@ -8,7 +8,9 @@ apply_patches $RUST_SRC/src/llvm-project 'llvm-*.patch'
 for rules in "$REPO"/rules/rustc-*.yml; do
   apply_rules $RUST_SRC "$rules" $REPO/files/rustc
 done
-sed "s|@WASI_SDK@|$WASI_SDK|g" $REPO/config/bootstrap.toml.in > $RUST_SRC/bootstrap.toml
+# rustc starts in $PWD (getcwd() and relative paths follow the host's PWD)
+CC=$WASI_SDK/bin/clang $REPO/wasi-libc-patches/scripts/build.sh >/dev/null
+sed "s|@WASI_SDK@|$WASI_SDK|g; s|@CWD_OBJ@|$REPO/wasi-libc-patches/dist/cwd-wasm32-wasip1-threads.o|g" $REPO/config/bootstrap.toml.in > $RUST_SRC/bootstrap.toml
 
 cd $RUST_SRC
 
