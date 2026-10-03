@@ -1,0 +1,32 @@
+# Bootstrap builds LLVM and lld for wasi with the wasi-sdk toolchain (llvm-wasi.patch makes the sources compile).
+id: bootstrap-llvm-wasi-cmake
+language: rust
+files: [src/bootstrap/src/core/build_steps/llvm.rs]
+metadata: { expect: 1 }
+rule:
+  pattern: configure_llvm(builder, target, &mut cfg);
+  inside:
+    kind: function_item
+    stopBy: end
+    has: { field: name, regex: ^run$ }
+    inside: { kind: declaration_list, inside: { kind: impl_item, has: { field: type, regex: '^Llvm$' } } }
+fix: |-
+  configure_llvm(builder, target, &mut cfg);
+
+  if target.contains("wasi") {
+      cfg.profile("MinSizeRel")
+          .define("LLVM_ENABLE_PROJECTS", "lld")
+          .define("WASI", "TRUE")
+          .define("CMAKE_SYSTEM_PROCESSOR", "wasm32")
+          .define("CMAKE_EXECUTABLE_SUFFIX", ".wasm")
+          .define("CMAKE_FIND_ROOT_PATH_MODE_PROGRAM", "NEVER")
+          .define("LLVM_ENABLE_THREADS", "ON")
+          .define("LLVM_ENABLE_PIC", "OFF")
+          .define("LLVM_BUILD_STATIC", "ON")
+          .define("LLVM_BUILD_TOOLS", "OFF")
+          .define("LLVM_INCLUDE_UTILS", "OFF")
+          .define("LLVM_BUILD_UTILS", "OFF")
+          .define("LLVM_INCLUDE_RUNTIMES", "OFF")
+          .define("LLD_BUILD_TOOLS", "OFF")
+          .define("HAVE_DLOPEN", "");
+  }

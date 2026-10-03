@@ -1,0 +1,207 @@
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      rust_rev:
+        description: "rust-lang/rust tag to build against"
+        type: string
+        default: "1.98.0"
+      ra_rev:
+        description: "rust-lang/rust-analyzer tag to build against"
+        type: string
+        default: "2026-09-28"
+      rustc:
+        description: "Build rustc for wasm (about 3 hours). Off = rust-analyzer and sysroot only."
+        type: boolean
+        default: true
+      release:
+        description: "Publish release <yyyymmdd-hhmm> UTC. Off = dry run, artifact only, 7 days."
+        type: boolean
+        default: false
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  ROOT: /home/runner/rust-wasm-build
+  RUST_REV: ${{ inputs.rust_rev }}
+  RA_REV: ${{ inputs.ra_rev }}
+  WASMTIME_VER: "30.0.2"
+
+jobs:
+  rust-analyzer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          targets: wasm32-wasip1-threads
+
+      - name: Install wasm-opt
+        env:
+          BINARYEN_VER: "133"
+        run: |
+          curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VER}/binaryen-version_${BINARYEN_VER}-x86_64-linux.tar.gz" \
+            | tar xz -C /tmp
+          echo "/tmp/binaryen-version_${BINARYEN_VER}/bin" >> "$GITHUB_PATH"
+          cargo install rustfilt --locked
+
+      - name: cache source + cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ROOT }}/rust-analyzer
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ra-${{ inputs.ra_rev }}-${{ hashFiles('scripts/setup.sh', 'rules/rust-analyzer*.yml', 'rules/salsa*.yml') }}
+
+      - name: setup
+        run: bash scripts/setup.sh ra
+
+      - name: build
+        run: bash scripts/build-ra.sh
+
+      - name: sizemap
+        run: python3 scripts/sizemap.py $ROOT/out/rust-analyzer.names.wasm 60 | tee $ROOT/out/sizemap-rust-analyzer.txt
+
+      - name: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-analyzer
+          path: |
+            ${{ env.ROOT }}/out/rust-analyzer.wasm
+            ${{ env.ROOT }}/out/sizemap-rust-analyzer.txt
+          retention-days: 7
+
+  sysroot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          targets: wasm32-wasip1
+
+      - name: Install brotli
+        run: sudo apt-get install -y brotli
+
+      - name: sysroot
+        run: bash scripts/sysroot.sh
+
+      - name: compress
+        working-directory: ${{ env.ROOT }}/out
+        run: |
+          for f in sysroot.tar rust-src.tar toolchain.json; do brotli -q 11 -k "$f"; done
+          ls -la
+
+      - name: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: sysroot
+          path: |
+            ${{ env.ROOT }}/out/sysroot.tar
+            ${{ env.ROOT }}/out/rust-src.tar
+            ${{ env.ROOT }}/out/toolchain.json
+            ${{ env.ROOT }}/out/*.br
+          retention-days: 7
+
+  rustc:
+    if: inputs.rustc
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Install build tools
+        env:
+          BINARYEN_VER: "133"
+        run: |
+          sudo apt-get install -y ninja-build cmake
+          curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VER}/binaryen-version_${BINARYEN_VER}-x86_64-linux.tar.gz" \
+            | tar xz -C /tmp
+          echo "/tmp/binaryen-version_${BINARYEN_VER}/bin" >> "$GITHUB_PATH"
+          cargo install rustfilt --locked
+
+      - name: setup
+        run: bash scripts/setup.sh rustc
+
+      - name: build
+        run: bash scripts/build-rustc.sh
+
+      - name: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustc
+          path: |
+            ${{ env.ROOT }}/out/rustc.wasm
+            ${{ env.ROOT }}/out/sizemap-rustc.txt
+          retention-days: 7
+
+  gate:
+    needs: [rust-analyzer, sysroot, rustc]
+    if: ${{ !cancelled() && needs.rust-analyzer.result == 'success' && needs.sysroot.result == 'success' && (needs.rustc.result == 'success' || needs.rustc.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ env.ROOT }}/out
+          merge-multiple: true
+
+      # wasmtime 49 dropped -S threads (wasi-threads), so the version is pinned
+      - uses: bytecodealliance/actions/wasmtime/setup@v1
+        with:
+          version: ${{ env.WASMTIME_VER }}
+
+      - uses: bytecodealliance/actions/wasm-tools/setup@v1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: validate
+        run: wasm-tools validate --features all ${{ env.ROOT }}/out/*.wasm
+
+      - name: gate
+        run: bash scripts/gate.sh
+
+  release:
+    if: inputs.release
+    needs: [gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: versions.json
+        run: |
+          printf '{"rustRev":"%s","raRev":"%s"}' "${RUST_REV}" "${RA_REV}" > release/versions.json
+          ls -la release
+
+      - name: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          NOW=$(date -u +%s)
+          TAG=$(date -u -d "@$NOW" +%Y%m%d-%H%M)
+          NOTES=$(printf 'rustc + std: %s (wasm32-wasip1-threads host, wasm32-wasip1 target)\nrust-analyzer: %s\n%s\n' \
+            "${RUST_REV}" "${RA_REV}" "$(date -u -d "@$NOW" +%FT%TZ)")
+          gh release create "$TAG" release/* \
+            --title "$TAG" \
+            --notes "$NOTES" \
+          || gh release upload "$TAG" release/* --clobber

@@ -1,0 +1,74 @@
+# Link in-process: on wasi there is no linker to spawn, so rustc calls wasm-ld (lld's wasm driver) through RustRunLld
+# (files/rustc/compiler/rustc_llvm/llvm-wrapper/LLD.cpp) and links lldWasm into rustc_llvm.
+id: link-natively-run-lld
+language: rust
+files: [compiler/rustc_codegen_ssa/src/back/link.rs]
+metadata: { expect: 1 }
+rule:
+  pattern: info!("{cmd:?}");
+  inside:
+    kind: block
+    inside: { kind: function_item, has: { field: name, regex: ^link_natively$ } }
+fix: |-
+  info!("{cmd:?}");
+  #[cfg(target_os = "wasi")]
+  if matches!(flavor, LinkerFlavor::WasmLld(Cc::No)) {
+      unsafe extern "C" {
+          fn RustRunLld(argc: std::ffi::c_int, argv: *const *const std::ffi::c_char)
+          -> std::ffi::c_int;
+      }
+      let cmd = cmd.command();
+      let args = std::iter::once(cmd.get_program())
+          .chain(cmd.get_args())
+          .map(|arg| std::ffi::CString::new(arg.as_encoded_bytes()).unwrap())
+          .collect::<Vec<_>>();
+      let argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+      let ret = unsafe { RustRunLld(args.len() as std::ffi::c_int, argv.as_ptr()) };
+      std::process::exit(ret);
+  }
+---
+id: llvm-build-lld-source
+language: rust
+files: [compiler/rustc_llvm/build.rs]
+metadata: { expect: 1 }
+rule:
+  kind: expression_statement
+  pattern: $F
+  regex: 'llvm-wrapper/PassWrapper\.cpp'
+  inside: { kind: block, inside: { kind: function_item, has: { field: name, regex: ^main$ } } }
+fix: |-
+  if target.contains("wasi") {
+      cfg.file("llvm-wrapper/LLD.cpp");
+  }
+  $F
+---
+id: llvm-build-lld-libs
+language: rust
+files: [compiler/rustc_llvm/build.rs]
+metadata: { expect: 1 }
+rule:
+  kind: for_expression
+  pattern: $F
+  has: { stopBy: end, pattern: 'println!("cargo:rustc-link-lib={kind}={name}");' }
+fix: |-
+  $F
+
+  if target.contains("wasi") {
+      for lib in ["lldWasm", "lldCommon", "LLVMOption"] {
+          println!("cargo:rustc-link-lib=static={lib}");
+      }
+  }
+---
+id: llvm-build-libcxx
+language: rust
+files: [compiler/rustc_llvm/build.rs]
+metadata: { expect: 1 }
+rule:
+  pattern: target.contains("ohos")
+  inside:
+    kind: if_expression
+    stopBy: end
+    has: { field: consequence, regex: '^\{\s*"c\+\+"\s*\}$' }
+fix: |-
+  target.contains("ohos")
+          || target.contains("wasi")

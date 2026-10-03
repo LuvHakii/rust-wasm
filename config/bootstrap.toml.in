@@ -1,0 +1,60 @@
+profile = "compiler"
+change-id = "ignore"
+
+[llvm]
+download-ci-llvm = false
+ninja = true
+assertions = false
+plugins = false
+libzstd = false
+release-debuginfo = false
+targets = "WebAssembly"
+experimental-targets = ""
+
+[rust]
+channel = "stable"
+optimize = "s"
+lto = "thin"
+codegen-units = 1
+debuginfo-level = 0
+debug-assertions = false
+debug-logging = false
+backtrace = false
+rpath = false
+llvm-tools = false
+llvm-bitcode-linker = false
+lld = false
+jemalloc = false
+deny-warnings = false
+codegen-backends = ["llvm"]
+std-features = ["panic-unwind", "optimize_for_size"]
+
+[build]
+host = ["wasm32-wasip1-threads"]
+target = ["wasm32-wasip1-threads"]
+docs = false
+compiler-docs = false
+extended = false
+tools = []
+verbose = 0
+
+[install]
+prefix = "dist"
+sysconfdir = "etc"
+
+[target.wasm32-wasip1-threads]
+cc = "@WASI_SDK@/bin/wasm32-wasip1-threads-clang"
+cxx = "@WASI_SDK@/bin/wasm32-wasip1-threads-clang++"
+ar = "@WASI_SDK@/bin/ar"
+ranlib = "@WASI_SDK@/bin/ranlib"
+linker = "@WASI_SDK@/bin/wasm32-wasip1-threads-clang"
+wasi-root = "@WASI_SDK@/share/wasi-sysroot"
+codegen-backends = ["llvm"]
+rustflags = [
+  "-Clink-self-contained=no",
+  "-Clink-arg=-lc++abi",
+  "-Clink-arg=-lwasi-emulated-mman",
+  "-Clink-arg=-lwasi-emulated-signal",
+  "-Clink-arg=-lwasi-emulated-process-clocks",
+  "-Clink-arg=-Wl,-z,stack-size=1048576",
+]

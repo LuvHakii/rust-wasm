@@ -1,0 +1,47 @@
+# rustc as a wasm32-wasip1-threads host cannot dlopen: proc macros are unsupported, so libloading is cfg'd out.
+id: host-dylib-use
+language: rust
+files: [compiler/rustc_metadata/src/host_dylib.rs]
+metadata: { expect: 3 }
+rule:
+  kind: use_declaration
+  pattern: $U
+  regex: '^use (std::error::Error|std::time::Duration|rustc_fs_util::try_canonicalize);$'
+fix: |-
+  #[cfg(any(unix, windows))]
+  $U
+---
+id: host-dylib-fns
+language: rust
+files: [compiler/rustc_metadata/src/host_dylib.rs]
+metadata: { expect: 3 }
+rule:
+  kind: function_item
+  pattern: $F
+  has: { field: name, regex: ^(format_dlopen_err|attempt_load_dylib|load_dylib)$ }
+fix: |-
+  #[cfg(any(unix, windows))]
+  $F
+---
+id: host-dylib-load-symbol
+language: rust
+files: [compiler/rustc_metadata/src/host_dylib.rs]
+metadata: { expect: 1 }
+rule:
+  kind: function_item
+  pattern: $F
+  has: { field: name, regex: ^load_symbol_from_dylib$ }
+fix: |-
+  #[cfg(any(unix, windows))]
+  $F
+
+  #[cfg(not(any(unix, windows)))]
+  pub unsafe fn load_symbol_from_dylib<T: Copy>(
+      path: &Path,
+      _sym_name: &str,
+  ) -> Result<T, DylibError> {
+      Err(DylibError::DlOpen(
+          path.display().to_string(),
+          "loading dynamic libraries is not supported on this target".to_string(),
+      ))
+  }
