@@ -45,3 +45,44 @@ fix: |-
           "loading dynamic libraries is not supported on this target".to_string(),
       ))
   }
+---
+id: enzyme-libloading-shim
+language: rust
+files: [compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'use crate::llvm::{EnzymeTypeTree, LLVMRustVersionMajor};' }
+fix: |-
+  use crate::llvm::{EnzymeTypeTree, LLVMRustVersionMajor};
+
+  #[cfg(not(any(unix, windows)))]
+  mod libloading {
+      pub use ::libloading::Error;
+
+      pub struct Library;
+
+      pub struct Symbol<'a, T>(std::marker::PhantomData<&'a T>);
+
+      impl Library {
+          pub unsafe fn new<P>(_: P) -> Result<Self, Error> {
+              Err(Error::DlOpenUnknown)
+          }
+
+          pub unsafe fn get<T>(&self, _: &[u8]) -> Result<Symbol<'_, T>, Error> {
+              Err(Error::DlSymUnknown)
+          }
+      }
+
+      impl<T> Symbol<'_, T> {
+          pub fn try_as_raw_ptr(&self) -> Option<*mut std::ffi::c_void> {
+              None
+          }
+      }
+
+      impl<T> std::ops::Deref for Symbol<'_, T> {
+          type Target = T;
+
+          fn deref(&self) -> &T {
+              unreachable!()
+          }
+      }
+  }
