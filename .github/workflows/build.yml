@@ -164,6 +164,8 @@ jobs:
           path: |
             ${{ env.ROOT }}/out/rustc.wasm
             ${{ env.ROOT }}/out/sizemap-rustc.txt
+            ${{ env.ROOT }}/out/sizemap-rustc-d3.txt
+            ${{ env.ROOT }}/out/rustc.names.wasm
           retention-days: 7
 
   gate:
@@ -199,6 +201,7 @@ jobs:
 
       - name: versions.json
         run: |
+          rm -f release/*.names.wasm
           printf '{"rustRev":"%s","raRev":"%s"}' "${RUST_REV}" "${RA_REV}" > release/versions.json
           ls -la release
 

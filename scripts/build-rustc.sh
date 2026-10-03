@@ -31,6 +31,7 @@ done
 cp $bin $OUT/rustc.names.wasm
 wasm-opt -Os --strip-debug $OUT/rustc.names.wasm -o $OUT/rustc.wasm
 python3 $REPO/scripts/sizemap.py $OUT/rustc.names.wasm 60 > $OUT/sizemap-rustc.txt
+python3 $REPO/scripts/sizemap.py $OUT/rustc.names.wasm 200 3 > $OUT/sizemap-rustc-d3.txt
 ls -la $OUT/rustc.wasm
 
 echo "BUILD DONE"
