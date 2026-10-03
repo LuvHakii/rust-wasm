@@ -22,7 +22,7 @@ rm -f $STD/libtest-* $STD/libproc_macro-* $STD/libgetopts-*
 # programs linked against this sysroot start in $PWD, so getcwd() and relative paths follow the host's PWD
 CWD=$REPO/wasi-libc-patches
 "$CWD/scripts/build.sh" >/dev/null
-LLD="$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | awk '/^host/ {print $2}')/bin/rust-lld"
+LLD="$(rustc --print target-libdir)/../bin/rust-lld"
 WASM_LD="$LLD -flavor wasm" "$CWD/scripts/merge.sh" $STD/self-contained/crt1-command.o "$CWD/dist/cwd-$TARGET.o"
 
 rm -rf $DL/tree && mkdir -p $DL/tree/rustc/lib/rustlib/$TARGET $DL/tree/ra/lib/rustlib/src/rust

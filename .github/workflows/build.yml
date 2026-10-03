@@ -198,7 +198,7 @@ jobs:
 
       - name: versions.json
         run: |
-          rm -f release/*.names.wasm
+          rm -f release/*.names.wasm release/sizemap-*.txt
           printf '{"rustRev":"%s","raRev":"%s"}' "${RUST_REV}" "${RA_REV}" > release/versions.json
           ls -la release
 
