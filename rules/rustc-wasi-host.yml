@@ -104,4 +104,11 @@ rule:
   pattern: '!m.permissions().readonly()'
   inside: { kind: function_item, stopBy: end, has: { field: name, regex: ^is_writeable$ } }
 fix: 'cfg!(target_os = "wasi") || !m.permissions().readonly()'
+---
+id: linker-path-join
+language: rust
+files: [compiler/rustc_codegen_ssa/src/back/linker.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'cmd.env("PATH", env::join_paths(new_path).unwrap());' }
+fix: 'cmd.env("PATH", env::join_paths(new_path).unwrap_or_default());'
 
