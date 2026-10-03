@@ -91,12 +91,6 @@ jobs:
       - name: sysroot
         run: bash scripts/sysroot.sh
 
-      - name: compress
-        working-directory: ${{ env.ROOT }}/out
-        run: |
-          for f in sysroot.tar rust-src.tar toolchain.json; do brotli -q 11 -k "$f"; done
-          ls -la
-
       - name: upload
         uses: actions/upload-artifact@v4
         with:
@@ -105,7 +99,6 @@ jobs:
             ${{ env.ROOT }}/out/sysroot.tar
             ${{ env.ROOT }}/out/rust-src.tar
             ${{ env.ROOT }}/out/toolchain.json
-            ${{ env.ROOT }}/out/*.br
           retention-days: 7
 
   rustc:
