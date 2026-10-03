@@ -152,11 +152,9 @@ jobs:
         with:
           key: rustc-${{ inputs.rust_rev }}-${{ hashFiles('patches/llvm-wasi.patch', 'rules/rustc-*.yml', 'config/bootstrap.toml.in', 'scripts/common.sh') }}
           restore-keys: rustc-${{ inputs.rust_rev }}
-          max-size: 5G
+          max-size: 2G
 
       - name: build
-        env:
-          CCACHE_COMPRESS: "true"
         run: bash scripts/build-rustc.sh
 
       - name: upload
