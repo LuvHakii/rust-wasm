@@ -1,0 +1,12 @@
+# salsa cancels in-flight queries by unwinding, and wasm32-wasip1 has no unwinding (panic=abort):
+# an edit during analysis aborted the server. Never set the flag, so the writer waits instead.
+id: salsa-no-cancel
+language: rust
+files: [src/runtime.rs]
+metadata: { expect: 1 }
+rule:
+  pattern: self.revision_cancelled.store(true, Ordering::Release);
+  inside:
+    kind: block
+    inside: { kind: function_item, has: { field: name, regex: ^set_cancellation_flag$ } }
+fix: ''

@@ -1,0 +1,74 @@
+# rust-analyzer cannot spawn cargo or rustc on wasm, so project-model answers those queries from /toolchain.json
+# (files/toolchain_cache.rs), and two std calls that WASI does not implement are replaced.
+id: toolchain-cache-metadata-no-deps
+language: rust
+files: [crates/project-model/src/cargo_workspace.rs]
+metadata: { expect: 1 }
+rule: { pattern: command.exec() }
+fix: crate::toolchain_cache::metadata(&command)
+---
+id: toolchain-cache-metadata-deps
+language: rust
+files: [crates/project-model/src/cargo_workspace.rs]
+metadata: { expect: 1 }
+rule: { pattern: no_deps_command.exec() }
+fix: crate::toolchain_cache::metadata(&no_deps_command)
+---
+id: toolchain-cache-fetch-lookup
+language: rust
+files: [crates/project-model/src/cargo_workspace.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'let mut errored = false;' }
+fix: |-
+  if let Some(json) = crate::toolchain_cache::lookup(&command.cargo_command()) {
+      return Ok((cargo_metadata::MetadataCommand::parse(json)?, None));
+  }
+  let mut errored = false;
+---
+id: toolchain-cache-mod
+language: rust
+files: [crates/project-model/src/lib.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'mod sysroot;' }
+fix: |-
+  mod sysroot;
+  mod toolchain_cache;
+---
+id: toolchain-cache-utf8-stdout
+language: rust
+files: [crates/project-model/src/lib.rs]
+metadata: { expect: 1 }
+rule:
+  kind: block
+  pattern: '{ $$$B }'
+  inside: { kind: function_item, field: body, has: { field: name, regex: ^utf8_stdout$ } }
+fix: |-
+  {
+      if let Some(stdout) = toolchain_cache::lookup(cmd) {
+          return Ok(stdout.trim().to_owned());
+      }
+      $$$B
+  }
+---
+# std::env::temp_dir and std::process::id are unsupported on WASI
+id: tempfile-dir
+language: rust
+files: [crates/stdx/src/tempfile.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'std::env::temp_dir().canonicalize()?' }
+fix: 'Path::new("/tmp").canonicalize()?'
+---
+id: tempfile-pid
+language: rust
+files: [crates/stdx/src/tempfile.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'std::process::id()' }
+fix: 0u32
+---
+# std::env::split_paths is unsupported on WASI
+id: lookup-in-path
+language: rust
+files: [crates/toolchain/src/lib.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'env::split_paths(&paths).map(|path| path.join(exec))' }
+fix: 'paths.to_string_lossy().split('':'').map(|path| PathBuf::from(path).join(exec))'
