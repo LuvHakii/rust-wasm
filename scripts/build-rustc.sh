@@ -13,7 +13,7 @@ sed "s|@WASI_SDK@|$WASI_SDK|g" $REPO/config/bootstrap.toml.in > $RUST_SRC/bootst
 cd $RUST_SRC
 
 # cc-rs and bootstrap read these per target; llvm.cflags and friends would also hit the x86 host LLVM
-EMU="-D_WASI_EMULATED_MMAN -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS"
+EMU="--target=wasm32-wasip1-threads -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS"
 export CFLAGS_wasm32_wasip1_threads="$EMU"
 export CXXFLAGS_wasm32_wasip1_threads="$EMU"
 export LDFLAGS_wasm32_wasip1_threads="-lwasi-emulated-mman -lwasi-emulated-signal -lwasi-emulated-process-clocks -Wl,--max-memory=2147483648 -Wl,-z,stack-size=1048576 -Wl,--stack-first"
