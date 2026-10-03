@@ -8,7 +8,7 @@ assertions = false
 plugins = false
 libzstd = false
 release-debuginfo = false
-targets = "WebAssembly"
+targets = "X86;WebAssembly"
 experimental-targets = ""
 
 [rust]

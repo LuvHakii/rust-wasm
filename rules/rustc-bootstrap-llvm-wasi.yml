@@ -27,6 +27,7 @@ fix: |-
           .define("LLVM_INCLUDE_UTILS", "OFF")
           .define("LLVM_BUILD_UTILS", "OFF")
           .define("LLVM_INCLUDE_RUNTIMES", "OFF")
+          .define("LLVM_TARGETS_TO_BUILD", "WebAssembly")
           .define("LLD_BUILD_TOOLS", "OFF")
           .define("HAVE_DLOPEN", "");
   }
