@@ -112,6 +112,8 @@ jobs:
     if: inputs.rustc
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    env:
+      CCACHE_DIR: /home/runner/rust-wasm-build/ccache
     steps:
       - uses: actions/checkout@v4
 
@@ -124,7 +126,6 @@ jobs:
         env:
           BINARYEN_VER: "133"
         run: |
-          sudo apt-get install -y ccache
           curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VER}/binaryen-version_${BINARYEN_VER}-x86_64-linux.tar.gz" \
             | tar xz -C /tmp
           echo "/tmp/binaryen-version_${BINARYEN_VER}/bin" >> "$GITHUB_PATH"
@@ -147,33 +148,16 @@ jobs:
           path: ${{ env.ROOT }}/rust
           key: ${{ steps.src.outputs.cache-primary-key }}
 
-      - name: restore ccache
-        uses: actions/cache/restore@v4
+      - uses: hendrikmuhs/ccache-action@v1
         with:
-          path: ${{ env.ROOT }}/ccache
-          key: ccache-rustc-${{ inputs.rust_rev }}-${{ hashFiles('patches/llvm-wasi.patch', 'rules/rustc-*.yml', 'config/bootstrap.toml.in', 'scripts/common.sh') }}-${{ github.run_id }}
-          restore-keys: |
-            ccache-rustc-${{ inputs.rust_rev }}-
+          key: rustc-${{ inputs.rust_rev }}-${{ hashFiles('patches/llvm-wasi.patch', 'rules/rustc-*.yml', 'config/bootstrap.toml.in', 'scripts/common.sh') }}
+          restore-keys: rustc-${{ inputs.rust_rev }}
+          max-size: 4G
 
       - name: build
         env:
-          CCACHE_DIR: ${{ env.ROOT }}/ccache
-          CCACHE_MAXSIZE: 4G
           CCACHE_COMPRESS: "true"
         run: bash scripts/build-rustc.sh
-
-      - name: ccache stats
-        if: always()
-        env:
-          CCACHE_DIR: ${{ env.ROOT }}/ccache
-        run: ccache -s
-
-      - name: save ccache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.ROOT }}/ccache
-          key: ccache-rustc-${{ inputs.rust_rev }}-${{ hashFiles('patches/llvm-wasi.patch', 'rules/rustc-*.yml', 'config/bootstrap.toml.in', 'scripts/common.sh') }}-${{ github.run_id }}
 
       - name: upload
         uses: actions/upload-artifact@v4
