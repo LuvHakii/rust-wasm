@@ -1,0 +1,3 @@
+[submodule "wasi-libc-patches"]
+	path = wasi-libc-patches
+	url = https://github.com/LuvHakii/wasi-libc-patches
