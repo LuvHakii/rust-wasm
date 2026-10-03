@@ -4,10 +4,10 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 apply_patches $RUST_SRC 'rustc-*.patch'
+apply_patches $RUST_SRC/src/llvm-project 'llvm-*.patch'
 for rules in "$REPO"/rules/rustc-*.yml; do
   apply_rules $RUST_SRC "$rules" $REPO/files/rustc
 done
-apply_patches $RUST_SRC/src/llvm-project 'llvm-*.patch'
 sed "s|@WASI_SDK@|$WASI_SDK|g" $REPO/config/bootstrap.toml.in > $RUST_SRC/bootstrap.toml
 
 cd $RUST_SRC
