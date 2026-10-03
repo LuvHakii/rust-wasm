@@ -88,3 +88,20 @@ fix: |-
           err: "loading dynamic libraries is not supported on this target".to_string(),
       })
   }
+---
+id: default-sysroot-no-dll
+language: rust
+files: [compiler/rustc_session/src/filesearch.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'default_from_rustc_driver_dll().expect("Failed finding sysroot")' }
+fix: default_from_rustc_driver_dll().unwrap_or_default()
+---
+id: writeable-wasi
+language: rust
+files: [compiler/rustc_session/src/output.rs]
+metadata: { expect: 1 }
+rule:
+  pattern: '!m.permissions().readonly()'
+  inside: { kind: function_item, stopBy: end, has: { field: name, regex: ^is_writeable$ } }
+fix: 'cfg!(target_os = "wasi") || !m.permissions().readonly()'
+
