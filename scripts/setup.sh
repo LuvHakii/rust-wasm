@@ -5,7 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 mkdir -p $ROOT
 
-if [ "$1" = "ra" ] || [ "$1" = "ra-src" ] || [ -z "$1" ]; then
+if [ "$1" = "ra" ] || [ -z "$1" ]; then
   if [ ! -d $RA_SRC ]; then
     echo "cloning rust-lang/rust-analyzer @ $RA_REV"
     git clone --depth 1 --branch $RA_REV --single-branch \
@@ -13,7 +13,7 @@ if [ "$1" = "ra" ] || [ "$1" = "ra-src" ] || [ -z "$1" ]; then
   fi
 fi
 
-if [ "$1" != "ra-src" ] && [ ! -d $WASI_SDK ]; then
+if [ ! -d $WASI_SDK ]; then
   echo "downloading wasi-sdk $WASI_SDK_VER"
   curl -fsSL "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-$WASI_SDK_VER/wasi-sdk-$WASI_SDK_VER.0-x86_64-linux.tar.gz" \
     | tar xz -C $ROOT

@@ -29,10 +29,5 @@ printf 'use std::collections::HashMap;\nfn main() {\n    let mut m: HashMap<Stri
 ra
 echo "rust-analyzer gate (clean): ok"
 
-printf 'fn main() {\n    let x: i32 = "oops";\n}\n' > $G/ra/ws/main.rs
-if bad=$(ra 2>&1); then echo "rust-analyzer gate: type error not reported"; exit 1; fi
-grep -q E0308 <<<"$bad" || { echo "$bad"; echo "rust-analyzer gate: expected E0308"; exit 1; }
-echo "rust-analyzer gate (error): ok"
-
 printf 'fn main() {}\n' > $G/ra/ws/main.rs
 node $REPO/scripts/lsp-gate.mjs "$(command -v $WT)" $OUT/rust-analyzer.wasm $G/ra

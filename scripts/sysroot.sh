@@ -24,7 +24,7 @@ cp -r $STD $DL/tree/rustc/lib/rustlib/$TARGET/lib
 cp -r $SRC $DL/tree/ra/lib/rustlib/src/rust/library
 
 # rust-analyzer spends most of a cold start parsing std and expanding its macros: ship core, alloc and std pre-expanded
-bash $REPO/scripts/setup.sh ra-src
+bash $REPO/scripts/setup.sh ra
 mkdir -p $RA_SRC/crates/syntax/examples
 cp $REPO/tools/strip.rs $RA_SRC/crates/syntax/examples/strip.rs
 (cd $RA_SRC && cargo build --release -p syntax --example strip)
