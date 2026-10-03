@@ -59,7 +59,8 @@ jobs:
             ${{ env.ROOT }}/rust-analyzer
             ~/.cargo/registry
             ~/.cargo/git
-          key: ra-${{ inputs.ra_rev }}-${{ hashFiles('scripts/setup.sh', 'rules/rust-analyzer*.yml', 'rules/salsa*.yml') }}
+          # the clone only depends on the tag and how it is fetched; rules are applied to it after restore
+          key: ra-${{ inputs.ra_rev }}-${{ hashFiles('scripts/setup.sh') }}
 
       - name: setup
         run: bash scripts/setup.sh ra
@@ -127,17 +128,62 @@ jobs:
         env:
           BINARYEN_VER: "133"
         run: |
-          sudo apt-get install -y ninja-build cmake
+          sudo apt-get install -y ninja-build cmake ccache
           curl -fsSL "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VER}/binaryen-version_${BINARYEN_VER}-x86_64-linux.tar.gz" \
             | tar xz -C /tmp
           echo "/tmp/binaryen-version_${BINARYEN_VER}/bin" >> "$GITHUB_PATH"
           cargo install rustfilt --locked
 
+      # the clone (with the llvm-project submodule) is saved right after setup so a failed build keeps it;
+      # build/ does not exist yet, so the multi-GB bootstrap output stays out of the cache
+      - name: restore source
+        id: src
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.ROOT }}/rust
+          key: rust-src-${{ inputs.rust_rev }}-${{ hashFiles('scripts/setup.sh') }}
+
       - name: setup
         run: bash scripts/setup.sh rustc
 
+      - name: save source
+        if: steps.src.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.ROOT }}/rust
+          key: ${{ steps.src.outputs.cache-primary-key }}
+
+      # ccache hashes file contents, so it survives the patches rewriting file mtimes (a cached ninja build dir would
+      # rebuild nearly all of LLVM, since bit.h is patched). The key carries a hash of what changes the compile
+      # (patches, rules, config, wasi-sdk version) and the run id, so every run saves; restore-keys fall back to the newest
+      # entry of the same rust tag, and a patch edit only recompiles what it touches.
+      - name: restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.ROOT }}/ccache
+          key: ccache-rustc-${{ inputs.rust_rev }}-${{ hashFiles('patches/llvm-wasi.patch', 'rules/rustc-*.yml', 'config/bootstrap.toml.in', 'scripts/common.sh') }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-rustc-${{ inputs.rust_rev }}-
+
       - name: build
+        env:
+          CCACHE_DIR: ${{ env.ROOT }}/ccache
+          CCACHE_MAXSIZE: 4G
+          CCACHE_COMPRESS: "true"
         run: bash scripts/build-rustc.sh
+
+      - name: ccache stats
+        if: always()
+        env:
+          CCACHE_DIR: ${{ env.ROOT }}/ccache
+        run: ccache -s
+
+      - name: save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.ROOT }}/ccache
+          key: ccache-rustc-${{ inputs.rust_rev }}-${{ hashFiles('patches/llvm-wasi.patch', 'rules/rustc-*.yml', 'config/bootstrap.toml.in', 'scripts/common.sh') }}-${{ github.run_id }}
 
       - name: upload
         uses: actions/upload-artifact@v4

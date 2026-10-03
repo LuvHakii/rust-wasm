@@ -30,6 +30,7 @@ codegen-backends = ["llvm"]
 std-features = ["panic-unwind", "optimize_for_size"]
 
 [build]
+ccache = true
 host = ["wasm32-wasip1-threads"]
 target = ["wasm32-wasip1-threads"]
 docs = false
