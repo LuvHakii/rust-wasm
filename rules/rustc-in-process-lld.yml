@@ -24,7 +24,10 @@ fix: |-
           .collect::<Vec<_>>();
       let argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
       let ret = unsafe { RustRunLld(args.len() as std::ffi::c_int, argv.as_ptr()) };
-      std::process::exit(ret);
+      if ret != 0 {
+          sess.dcx().fatal("linking with `wasm-ld` failed");
+      }
+      return;
   }
 ---
 id: llvm-build-lld-source
