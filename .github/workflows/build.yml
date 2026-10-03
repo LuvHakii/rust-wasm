@@ -150,7 +150,7 @@ jobs:
 
       - uses: hendrikmuhs/ccache-action@v1
         with:
-          key: rustc-${{ inputs.rust_rev }}-${{ hashFiles('patches/llvm-wasi.patch', 'rules/rustc-*.yml', 'config/bootstrap.toml.in', 'scripts/common.sh') }}
+          key: rustc-${{ inputs.rust_rev }}
           restore-keys: rustc-${{ inputs.rust_rev }}
           max-size: 2G
 
