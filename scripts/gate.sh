@@ -39,4 +39,5 @@ ra
 echo "rust-analyzer gate (clean): ok"
 
 printf 'fn main() {}\n' > $G/ra/ws/main.rs
+printf 'hard_tabs = true\n' > $G/ra/ws/rustfmt.toml
 node $REPO/scripts/lsp-gate.mjs "$(command -v $WT)" $OUT/rust-analyzer.wasm $G/ra

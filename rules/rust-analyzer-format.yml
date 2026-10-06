@@ -1,0 +1,75 @@
+id: rustfmt-in-process
+language: rust
+files: [crates/rust-analyzer/src/handlers/request.rs]
+metadata: { expect: 1 }
+rule:
+  pattern: 'let output = { $$$B };'
+  inside: { kind: block, inside: { kind: function_item, has: { field: name, regex: '^run_rustfmt$' } } }
+fix: |-
+  let Some(captured_stdout) = rustfmt_nightly::format_text(
+      file.to_string(),
+      command.get_current_dir().expect("rustfmt command has a working directory"),
+      command.get_args(),
+  )? else {
+      return Ok(None);
+  };
+---
+id: rustfmt-no-subprocess-stdout
+language: rust
+files: [crates/rust-analyzer/src/handlers/request.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'let captured_stdout = String::from_utf8(output.stdout)?;' }
+fix: ''
+---
+id: rustfmt-no-subprocess-stderr
+language: rust
+files: [crates/rust-analyzer/src/handlers/request.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'let captured_stderr = String::from_utf8(output.stderr).unwrap_or_default();' }
+fix: ''
+---
+id: rustfmt-no-subprocess-status
+language: rust
+files: [crates/rust-analyzer/src/handlers/request.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'if !output.status.success() { $$$B }' }
+fix: ''
+---
+id: rustfmt-command-immutable
+language: rust
+files: [crates/rust-analyzer/src/handlers/request.rs]
+metadata: { expect: 1 }
+rule:
+  kind: mutable_specifier
+  inside:
+    kind: let_declaration
+    has: { field: pattern, regex: '^command$' }
+    inside: { kind: block, inside: { kind: function_item, has: { field: name, regex: '^run_rustfmt$' } } }
+fix: ''
+---
+id: rustfmt-no-custom-process
+language: rust
+files: [crates/rust-analyzer/src/handlers/request.rs]
+metadata: { expect: 1 }
+rule:
+  pattern:
+    context: 'match config { RustfmtConfig::CustomCommand { command, args } => { $$$B } }'
+    selector: match_arm
+fix: |-
+  RustfmtConfig::CustomCommand { .. } => {
+      anyhow::bail!("custom rustfmt commands cannot run on WASI; use rustfmt.extraArgs or rustfmt.toml")
+  }
+---
+id: rustfmt-no-process-imports
+language: rust
+files: [crates/rust-analyzer/src/handlers/request.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'use std::{fs, io::Write as _, ops::Not, process::Stdio};' }
+fix: 'use std::{fs, ops::Not};'
+---
+id: rustfmt-no-spawn-context
+language: rust
+files: [crates/rust-analyzer/src/handlers/request.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'use anyhow::Context;' }
+fix: ''

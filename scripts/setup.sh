@@ -19,11 +19,13 @@ if [ ! -d $WASI_SDK ]; then
     | tar xz -C $ROOT
 fi
 
-if [ "$1" = "rustc" ] || [ -z "$1" ]; then
+if [ "$1" = "ra" ] || [ "$1" = "rustc" ] || [ -z "$1" ]; then
   if [ ! -d $RUST_SRC ]; then
     echo "cloning rust-lang/rust @ $RUST_REV"
     git clone --depth 1 --branch $RUST_REV --single-branch \
       https://github.com/rust-lang/rust.git $RUST_SRC
+  fi
+  if [ "$1" != "ra" ]; then
     git -C $RUST_SRC submodule update --init --depth 1 src/llvm-project
   fi
 fi

@@ -57,9 +57,10 @@ jobs:
         with:
           path: |
             ${{ env.ROOT }}/rust-analyzer
+            ${{ env.ROOT }}/rust
             ~/.cargo/registry
             ~/.cargo/git
-          key: ra-${{ inputs.ra_rev }}-${{ hashFiles('scripts/setup.sh') }}
+          key: ra-${{ inputs.ra_rev }}-rust-${{ inputs.rust_rev }}-${{ hashFiles('scripts/setup.sh') }}
 
       - name: setup
         run: bash scripts/setup.sh ra
@@ -209,8 +210,8 @@ jobs:
         run: |
           NOW=$(date -u +%s)
           TAG=$(date -u -d "@$NOW" +%Y%m%d-%H%M)
-          NOTES=$(printf 'rustc + std: %s (wasm32-wasip1-threads host, wasm32-wasip1 target)\nrust-analyzer: %s\n%s\n' \
-            "${RUST_REV}" "${RA_REV}" "$(date -u -d "@$NOW" +%FT%TZ)")
+          NOTES=$(printf 'rustc + std: %s (wasm32-wasip1-threads host, wasm32-wasip1 target)\nrust-analyzer: %s\nDocument formatting embeds rustfmt from Rust %s and preserves diff-based LSP edits. Honors rustfmt.toml, edition, and extraArgs; custom formatter commands are unavailable on WASI.\n%s\n' \
+            "${RUST_REV}" "${RA_REV}" "${RUST_REV}" "$(date -u -d "@$NOW" +%FT%TZ)")
           gh release create "$TAG" release/* \
             --title "$TAG" \
             --notes "$NOTES" \

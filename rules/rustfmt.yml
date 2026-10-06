@@ -1,0 +1,113 @@
+id: rustfmt-static-parser
+language: rust
+files: [src/tools/rustfmt/src/lib.rs]
+metadata: { expect: 10 }
+rule: { kind: extern_crate_declaration }
+fix: ''
+---
+id: rustfmt-library-cli
+language: rust
+files: [src/tools/rustfmt/src/lib.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'mod utils;' }
+fix: |-
+  mod utils;
+  #[path = "bin/main.rs"]
+  mod cli;
+  mod wasi;
+  pub use wasi::format_text;
+---
+id: rustfmt-cli-self
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'use rustfmt_nightly as rustfmt;' }
+fix: ''
+---
+id: rustfmt-cli-imports
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'use crate::rustfmt::{$$$I};' }
+fix: 'use crate::{CliOptions, Color, Config, Edition, EmitMode, FileLines, StyleEdition, Verbosity, Version};'
+---
+id: rustfmt-cli-no-driver
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'extern crate rustc_driver;' }
+fix: ''
+---
+id: rustfmt-cli-no-process
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 11 }
+rule:
+  kind: function_item
+  has: { field: name, regex: '^(main|execute|format_string|format|format_and_emit_report|should_print_with_colors|print_usage_to_stdout|print_help_file_lines|print_version|determine_operation|verify_file_lines)$' }
+fix: ''
+---
+id: rustfmt-cli-options-api
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'fn make_opts() -> Options { $$$B }' }
+fix: 'pub(crate) fn make_opts() -> Options { $$$B }'
+---
+id: rustfmt-cli-config-api
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'struct GetOptsOptions { $$$A config_path: Option<PathBuf>, $$$B }' }
+fix: 'pub(crate) struct GetOptsOptions { $$$A pub(crate) config_path: Option<PathBuf>, $$$B }'
+---
+id: rustfmt-cli-no-crate-feature
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: '#![feature(rustc_private)]' }
+fix: ''
+---
+id: rustfmt-cli-unused-imports
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 6 }
+rule:
+  any:
+    - { pattern: 'use io::Error as IoError;' }
+    - { pattern: 'use thiserror::Error;' }
+    - { pattern: 'use tracing_subscriber::EnvFilter;' }
+    - { pattern: 'use std::env;' }
+    - { pattern: 'use std::fs::File;' }
+    - { pattern: 'use std::io::{self, Read, Write, stdout};' }
+fix: ''
+---
+id: rustfmt-cli-unused-enums
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 3 }
+rule:
+  kind: enum_item
+  has: { field: name, regex: '^(Operation|OperationError|HelpOp)$' }
+fix: ''
+---
+id: rustfmt-cli-unused-error-derive
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: '#[derive(Error, Debug)]' }
+fix: ''
+---
+id: rustfmt-cli-unused-error-conversion
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'impl From<IoError> for OperationError { $$$B }' }
+fix: ''
+---
+id: rustfmt-cli-unused-bug-url
+language: rust
+files: [src/tools/rustfmt/src/bin/main.rs]
+metadata: { expect: 1 }
+rule: { pattern: 'const BUG_REPORT_URL: &str = $V;' }
+fix: ''
